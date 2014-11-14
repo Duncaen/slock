@@ -17,6 +17,7 @@
 #include <X11/keysym.h>
 #include <X11/Xlib.h>
 #include <X11/Xutil.h>
+#include <Imlib2.h>
 
 #if HAVE_BSD_AUTH
 #include <login_cap.h>
@@ -27,12 +28,15 @@ typedef struct {
 	int screen;
 	Window root, win;
 	Pixmap pmap;
+	Pixmap bgmap;
 	unsigned long colors[2];
 } Lock;
 
 static Lock **locks;
 static int nscreens;
 static Bool running = True;
+
+Imlib_Image image;
 
 static void
 die(const char *errstr, ...) {
@@ -160,7 +164,10 @@ readpw(Display *dpy, const char *pws)
 				}
 			} else if(llen != 0 && len == 0) {
 				for(screen = 0; screen < nscreens; screen++) {
-					XSetWindowBackground(dpy, locks[screen]->win, locks[screen]->colors[0]);
+					if(locks[screen]->bgmap)
+						XSetWindowBackgroundPixmap(dpy, locks[screen]->win, locks[screen]->bgmap);
+					else
+						XSetWindowBackground(dpy, locks[screen]->win, locks[screen]->colors[0]);
 					XClearWindow(dpy, locks[screen]->win);
 				}
 			}
@@ -204,12 +211,27 @@ lockscreen(Display *dpy, int screen) {
 
 	lock->root = RootWindow(dpy, lock->screen);
 
+	if(image) {
+		lock->bgmap = XCreatePixmap(dpy, lock->root, DisplayWidth(dpy, lock->screen), DisplayHeight(dpy, lock->screen), DefaultDepth(dpy, lock->screen));
+		imlib_context_set_image(image);
+		imlib_context_set_display(dpy);
+		imlib_context_set_visual(DefaultVisual(dpy, lock->screen));
+		imlib_context_set_colormap(DefaultColormap(dpy, lock->screen));
+		imlib_context_set_drawable(lock->bgmap);
+		imlib_render_image_on_drawable(0, 0);
+		imlib_free_image();
+	}
+
 	/* init */
 	wa.override_redirect = 1;
 	wa.background_pixel = BlackPixel(dpy, lock->screen);
 	lock->win = XCreateWindow(dpy, lock->root, 0, 0, DisplayWidth(dpy, lock->screen), DisplayHeight(dpy, lock->screen),
 			0, DefaultDepth(dpy, lock->screen), CopyFromParent,
 			DefaultVisual(dpy, lock->screen), CWOverrideRedirect | CWBackPixel, &wa);
+
+	if(lock->bgmap)
+		XSetWindowBackgroundPixmap(dpy, lock->win, lock->bgmap);
+
 	XAllocNamedColor(dpy, DefaultColormap(dpy, lock->screen), COLOR2, &color, &dummy);
 	lock->colors[1] = color.pixel;
 	XAllocNamedColor(dpy, DefaultColormap(dpy, lock->screen), COLOR1, &color, &dummy);
@@ -260,6 +282,12 @@ main(int argc, char **argv) {
 
 	if((argc == 2) && !strcmp("-v", argv[1]))
 		die("slock-%s, © 2006-2012 Anselm R Garbe\n", VERSION);
+	if((argc == 3) && !strcmp("-i", argv[1])) {
+		image = imlib_load_image(argv[2]);
+		if(!image) {
+			die("slock: unable to load image.\n");
+		}
+	}
 	else if(argc != 1)
 		usage();
 
