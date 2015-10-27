@@ -282,7 +282,7 @@ main(int argc, char **argv) {
 
 	if((argc == 2) && !strcmp("-v", argv[1])) {
 		die("slock-%s, © 2006-2012 Anselm R Garbe\n", VERSION);
-    }
+	}
 	if((argc == 3) && !strcmp("-i", argv[1])) {
 		image = imlib_load_image(argv[2]);
 		if(!image) {
