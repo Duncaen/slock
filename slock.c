@@ -268,7 +268,7 @@ lockscreen(Display *dpy, int screen) {
 
 static void
 usage(void) {
-	fprintf(stderr, "usage: slock [-v]\n");
+	fprintf(stderr, "\nusage: slock [options]\noptions:\n\t-v\tPrint version and exit.\n\t-i\t<full path to image file to display>\n");
 	exit(EXIT_FAILURE);
 }
 
@@ -280,8 +280,9 @@ main(int argc, char **argv) {
 	Display *dpy;
 	int screen;
 
-	if((argc == 2) && !strcmp("-v", argv[1]))
+	if((argc == 2) && !strcmp("-v", argv[1])) {
 		die("slock-%s, © 2006-2012 Anselm R Garbe\n", VERSION);
+    }
 	if((argc == 3) && !strcmp("-i", argv[1])) {
 		image = imlib_load_image(argv[2]);
 		if(!image) {
